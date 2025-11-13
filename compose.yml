@@ -1,16 +1,29 @@
 services:
-  web:
-    build: .
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-
   db:
     image: postgres:13
     environment:
       POSTGRES_DB: visits_db
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d visits_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  web:
+    build: .
     ports:
-      - "5432:5432"
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/visits_db
+
+volumes:
+  postgres_data:
