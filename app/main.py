@@ -17,23 +17,6 @@ DB_CONFIG = {
 def get_db_connection():
     return psycopg2.connect(**DB_CONFIG)
 
-def wait_for_db():
-    max_retries = 30
-    for i in range(max_retries):
-        try:
-            conn = get_db_connection()
-            conn.close()
-            print(" DB available!")
-        return True
-        except Exception as e:
-            print(f"Connect attempt: {i+1}")
-            time.sleep(2)
-    raise Exception("Coud not connect to DB")
-
-@app.on_event("startup")
-async def startup_event():
-    wait_for_db()
-
 @app.get("/ping", response_class=PlainTextResponse)
 async def ping(request: Request):
     client_ip = request.client.host
