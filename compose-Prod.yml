@@ -23,6 +23,7 @@ services:
       db:
         condition: service_healthy
     environment:
+      - APP_MODE=PROD
       - DATABASE_URL=postgresql://user:password@db:5432/visits_db
 
 volumes:
