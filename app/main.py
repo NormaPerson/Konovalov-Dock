@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import PlainTextResponse
 import psycopg2
 import os
+import time
 
 app = FastAPI()
 
@@ -16,21 +17,22 @@ DB_CONFIG = {
 def get_db_connection():
     return psycopg2.connect(**DB_CONFIG)
 
-def init_db():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS visits (
-            id SERIAL PRIMARY KEY,
-            ip VARCHAR(45) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    cur.close()
-    conn.close()
+def wait_for_db():
+    max_retries = 30
+    for i in range(max_retries):
+        try:
+            conn = get_db_connection()
+            conn.close()
+            print(" DB available!")
+        return True
+        except Exception as e:
+            print(f"Connect attempt: {i+1}")
+            time.sleep(2)
+    raise Exception("Coud not connect to DB")
 
-init_db()
+@app.on_event("startup")
+async def startup_event():
+    wait_for_db()
 
 @app.get("/ping", response_class=PlainTextResponse)
 async def ping(request: Request):
@@ -42,7 +44,7 @@ async def ping(request: Request):
     conn.commit()
     cur.close()
     conn.close()
-    return "pong"
+    return "pong\n"
 
 @app.get("/visits", response_class=PlainTextResponse)
 async def get_visits():
@@ -52,8 +54,9 @@ async def get_visits():
     count = cur.fetchone()[0]
     cur.close()
     conn.close()
-    return F"Visits: {count}"
+    return f"Visits: {count}\n"
 
 @app.get("/", response_class=PlainTextResponse)
 async def root():
-    return "API работает! Используйте /ping и /visits"
+    return "API работает! Используйте /ping и /visits\n"
+
